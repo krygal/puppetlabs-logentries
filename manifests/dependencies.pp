@@ -59,40 +59,25 @@ class logentries::dependencies {
 
     'debian', 'ubuntu': {
 
-      package { 'apt-transport-https':
-        ensure => latest,
+      $aptkey = {
+        'key'         => 'C43C79AD',
+        'key_source'  => 'https://rep.logentries.com/RPM-GPG-KEY-logentries',
       }
 
-      file { '/etc/apt/trusted.gpg.d/logentries.gpg':
-        source => 'puppet:///modules/logentries/logentries.gpg',
-        notify => Exec['add-logentries-apt-key'],
+      $aptsource = {
+        'location'  => 'https://rep.logentries.com/',
+        'release'   => $::lsbdistcodename,
+        'repos'     => 'main',
+        'key'       => 'C43C79AD',
       }
 
-      exec { 'add-logentries-apt-key':
-        command     => 'apt-key add /etc/apt/trusted.gpg.d/logentries.gpg',
-        refreshonly => true,
-      }
+      # Setup repo
+      ensure_resource('apt::key', 'logentries', $aptkey)
 
-      file { '/etc/apt/sources.list.d/logentries.list':
-        ensure  => present,
-        content => template('logentries/apt_source.erb'),
-        owner   => 'root',
-        group   => 'root',
-        mode    => '0644',
-        require => [Package['apt-transport-https'],
-                    File['/etc/apt/trusted.gpg.d/logentries.gpg']],
-        notify  => Exec['apt-update']
-      }
+      Apt::Source { require => Apt::Key['logentries'], }
 
-      exec { 'apt-update':
-        command     => '/usr/bin/apt-get update',
-        refreshonly => true,
-      }
+      ensure_resource('apt::source', 'logentries', $aptsource)
 
-      package { 'python-setproctitle':
-        ensure  => latest,
-        require => Exec['apt-update']
-      }
     }
 
     default: {
